@@ -1,222 +1,340 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
-import mysql.connector
+import pyodbc
 
-# ====================== KẾT NỐI MYSQL ======================
+# ========================= KẾT NỐI SQL SERVER =========================
 def connect_db():
     try:
-        conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="",   # Thay mật khẩu MySQL nếu có
-            database="QLXe"
+        conn = pyodbc.connect(
+            "DRIVER={SQL Server};"
+            "SERVER=localhost;"
+            "DATABASE=QLXe;"
+            "Trusted_Connection=yes;"
         )
         return conn
     except Exception as e:
-        messagebox.showerror("Lỗi kết nối MySQL", str(e))
+        messagebox.showerror("Lỗi SQL Server", str(e))
         return None
 
-
-# ====================== CANH GIỮA CỬA SỔ ======================
-def center(win, w=750, h=520):
+# ========================= CĂN GIỮA CỬA SỔ =========================
+def center(win, w=800, h=600):
     ws = win.winfo_screenwidth()
     hs = win.winfo_screenheight()
-    x = (ws - w) // 2
-    y = (hs - h) // 2
+    x = (ws//2) - (w//2)
+    y = (hs//2) - (h//2)
     win.geometry(f"{w}x{h}+{x}+{y}")
 
-
-# ====================== CỬA SỔ CHÍNH ======================
+# ========================= GIAO DIỆN CHÍNH =========================
 root = tk.Tk()
-root.title("Quản lý LÁI XE")
+root.title("Quản lý Xe & Lái xe - SQL Server")
 center(root)
 root.resizable(False, False)
 
-tk.Label(root, text="HỆ THỐNG QUẢN LÝ LÁI XE", font=("Arial", 18, "bold")).pack(pady=10)
+title = tk.Label(root, text="QUẢN LÝ XE & LÁI XE", font=("Arial", 20, "bold"))
+title.pack(pady=10)
 
+notebook = ttk.Notebook(root)
+notebook.pack(fill="both", expand=True)
 
-# ====================== FORM NHẬP THÔNG TIN ======================
-frm = tk.Frame(root)
-frm.pack(pady=5, padx=10, fill="x")
+# =====================================================================
+# =========================== TAB QUẢN LÝ XE ===========================
+# =====================================================================
 
-# Mã lái xe
-tk.Label(frm, text="Mã lái xe").grid(row=0, column=0, padx=5, pady=5)
-entry_maso = tk.Entry(frm, width=15)
-entry_maso.grid(row=0, column=1, padx=5)
+tab_xe = tk.Frame(notebook)
+notebook.add(tab_xe, text="Quản lý Xe")
 
-# Hạng bằng lái
-tk.Label(frm, text="Hạng bằng").grid(row=0, column=2, padx=5, pady=5)
-cbb_hang = ttk.Combobox(frm, width=15, values=["A1", "A2", "B1", "B2", "C", "D", "E", "FC"])
-cbb_hang.grid(row=0, column=3, padx=5)
+# ------- Form nhập -------
+frame_xe = tk.Frame(tab_xe)
+frame_xe.pack(pady=10)
 
-# Họ lót
-tk.Label(frm, text="Họ lót").grid(row=1, column=0, padx=5, pady=5)
-entry_holot = tk.Entry(frm, width=25)
-entry_holot.grid(row=1, column=1, padx=5)
+tk.Label(frame_xe, text="Mã Xe").grid(row=0, column=0)
+e_ma_xe = tk.Entry(frame_xe, width=20)
+e_ma_xe.grid(row=0, column=1)
 
-# Tên
-tk.Label(frm, text="Tên").grid(row=1, column=2, padx=5, pady=5)
-entry_ten = tk.Entry(frm, width=15)
-entry_ten.grid(row=1, column=3, padx=5)
+tk.Label(frame_xe, text="Tên Xe").grid(row=1, column=0)
+e_ten_xe = tk.Entry(frame_xe, width=20)
+e_ten_xe.grid(row=1, column=1)
 
-# Phái
-tk.Label(frm, text="Phái").grid(row=2, column=0, padx=5, pady=5)
-gender_var = tk.StringVar(value="Nam")
-tk.Radiobutton(frm, text="Nam", variable=gender_var, value="Nam").grid(row=2, column=1, sticky="w")
-tk.Radiobutton(frm, text="Nữ", variable=gender_var, value="Nữ").grid(row=2, column=2, sticky="w")
+tk.Label(frame_xe, text="Loại Xe").grid(row=2, column=0)
+e_loai_xe = tk.Entry(frame_xe, width=20)
+e_loai_xe.grid(row=2, column=1)
 
-# Ngày sinh
-tk.Label(frm, text="Ngày sinh").grid(row=2, column=2, padx=5)
-date_ngaysinh = DateEntry(frm, width=12, date_pattern="yyyy-mm-dd")
-date_ngaysinh.grid(row=2, column=3, padx=5)
+tk.Label(frame_xe, text="Biển số").grid(row=0, column=2)
+e_bienso = tk.Entry(frame_xe, width=20)
+e_bienso.grid(row=0, column=3)
 
+tk.Label(frame_xe, text="Ngày Đăng Kiểm").grid(row=1, column=2)
+date_dk = DateEntry(frame_xe, width=18, date_pattern="yyyy-mm-dd")
+date_dk.grid(row=1, column=3)
 
-# ====================== BẢNG LÁI XE ======================
-tk.Label(root, text="Danh sách Lái xe", font=("Arial", 11, "bold")).pack(anchor="w", padx=15)
+# ------- Bảng dữ liệu -------
+columns_xe = ("MaXe", "TenXe", "LoaiXe", "BienSo", "NgayDangKiem")
+tree_xe = ttk.Treeview(tab_xe, columns=columns_xe, show="headings", height=12)
 
-columns = ("maso", "holot", "ten", "phai", "ngaysinh", "hangbang")
+for col in columns_xe:
+    tree_xe.heading(col, text=col)
+    tree_xe.column(col, width=140)
 
-tree = ttk.Treeview(root, columns=columns, show="headings", height=12)
+tree_xe.pack(pady=10)
 
-for col in columns:
-    tree.heading(col, text=col.upper())
+# ===================== HÀM XỬ LÝ XE =====================
+def clear_xe():
+    e_ma_xe.delete(0, tk.END)
+    e_ten_xe.delete(0, tk.END)
+    e_loai_xe.delete(0, tk.END)
+    e_bienso.delete(0, tk.END)
+    date_dk.set_date("2000-01-01")
 
-tree.column("maso", width=80)
-tree.column("holot", width=150)
-tree.column("ten", width=80)
-tree.column("phai", width=60)
-tree.column("ngaysinh", width=90)
-tree.column("hangbang", width=80)
-
-tree.pack(padx=10, pady=5)
-# ====================== CÁC HÀM XỬ LÝ ======================
-def clear_input():
-    entry_maso.delete(0, tk.END)
-    entry_holot.delete(0, tk.END)
-    entry_ten.delete(0, tk.END)
-    gender_var.set("Nam")
-    date_ngaysinh.set_date("2000-01-01")
-    cbb_hang.set("")
-
-
-def load_data():
+def load_xe():
     conn = connect_db()
-    if not conn: return
     cur = conn.cursor()
+    tree_xe.delete(*tree_xe.get_children())
 
-    tree.delete(*tree.get_children())
-    cur.execute("SELECT * FROM laixe")
-
+    cur.execute("SELECT * FROM Xe")
     for row in cur.fetchall():
-        tree.insert("", tk.END, values=row)
+        tree_xe.insert("", tk.END, values=row)
 
     conn.close()
 
-
-def them_laixe():
-    maso = entry_maso.get()
-    holot = entry_holot.get()
-    ten = entry_ten.get()
-    phai = gender_var.get()
-    ngaysinh = date_ngaysinh.get()
-    hang = cbb_hang.get()
-
-    if maso == "" or ten == "" or holot == "":
-        messagebox.showwarning("Thiếu dữ liệu", "Vui lòng nhập đủ thông tin!")
-        return
+def add_xe(): 
+    ma = e_ma_xe.get()
+    ten = e_ten_xe.get()
+    loai = e_loai_xe.get()
+    bs = e_bienso.get()
+    dk = date_dk.get()
 
     conn = connect_db()
     cur = conn.cursor()
 
     try:
-        cur.execute("INSERT INTO laixe VALUES (%s,%s,%s,%s,%s,%s)",
-                    (maso, holot, ten, phai, ngaysinh, hang))
+        cur.execute(
+            "INSERT INTO Xe VALUES (?, ?, ?, ?, ?)",
+            (ma, ten, loai, bs, dk)
+        )
         conn.commit()
-        messagebox.showinfo("OK", "Đã thêm lái xe!")
-
-        clear_input()
-        load_data()
-
+        messagebox.showinfo("OK", "Thêm Xe thành công!")
+        load_xe()
+        clear_xe()
     except Exception as e:
         messagebox.showerror("Lỗi", str(e))
-
     conn.close()
 
-
-def xoa_laixe():
-    sel = tree.selection()
+def delete_xe():
+    sel = tree_xe.selection()
     if not sel:
-        messagebox.showwarning("Chọn dòng", "Chọn lái xe để xóa!")
+        messagebox.showwarning("Chọn xe", "Hãy chọn một xe để xóa")
         return
-
-    maso = tree.item(sel)["values"][0]
+    ma = tree_xe.item(sel)["values"][0]
 
     conn = connect_db()
     cur = conn.cursor()
-    cur.execute("DELETE FROM laixe WHERE maso=%s", (maso,))
+    cur.execute("DELETE FROM Xe WHERE MaXe=?", (ma,))
     conn.commit()
     conn.close()
+    load_xe()
 
-    load_data()
-
-
-def sua_laixe():
-    sel = tree.selection()
+def edit_xe():
+    sel = tree_xe.selection()
     if not sel:
-        messagebox.showwarning("Chọn dòng", "Chọn lái xe để sửa!")
+        messagebox.showwarning("Chọn xe", "Hãy chọn xe để sửa")
         return
+    val = tree_xe.item(sel)["values"]
 
-    maso, holot, ten, phai, ns, hang = tree.item(sel)["values"]
+    e_ma_xe.delete(0, tk.END)
+    e_ma_xe.insert(0, val[0])
 
-    entry_maso.delete(0, tk.END)
-    entry_maso.insert(0, maso)
+    e_ten_xe.delete(0, tk.END)
+    e_ten_xe.insert(0, val[1])
 
-    entry_holot.delete(0, tk.END)
-    entry_holot.insert(0, holot)
+    e_loai_xe.delete(0, tk.END)
+    e_loai_xe.insert(0, val[2])
 
-    entry_ten.delete(0, tk.END)
-    entry_ten.insert(0, ten)
+    e_bienso.delete(0, tk.END)
+    e_bienso.insert(0, val[3])
 
-    gender_var.set(phai)
-    date_ngaysinh.set_date(ns)
-    cbb_hang.set(hang)
+    date_dk.set_date(val[4])
 
-
-def luu_laixe():
-    maso = entry_maso.get()
-    holot = entry_holot.get()
-    ten = entry_ten.get()
-    phai = gender_var.get()
-    ngaysinh = date_ngaysinh.get()
-    hang = cbb_hang.get()
+def save_xe():
+    ma = e_ma_xe.get()
+    ten = e_ten_xe.get()
+    loai = e_loai_xe.get()
+    bs = e_bienso.get()
+    dk = date_dk.get()
 
     conn = connect_db()
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE laixe
-        SET holot=%s, ten=%s, phai=%s, ngaysinh=%s, hangbang=%s
-        WHERE maso=%s
-    """, (holot, ten, phai, ngaysinh, hang, maso))
+        UPDATE Xe 
+        SET TenXe=?, LoaiXe=?, BienSo=?, NgayDangKiem=?
+        WHERE MaXe=?
+    """, (ten, loai, bs, dk, ma))
 
     conn.commit()
     conn.close()
+    load_xe()
+    clear_xe()
 
-    load_data()
-    clear_input()
+# ------- Buttons -------
+frame_btn_xe = tk.Frame(tab_xe)
+frame_btn_xe.pack()
 
+tk.Button(frame_btn_xe, text="Thêm", width=12, command=add_xe).grid(row=0, column=0, padx=5)
+tk.Button(frame_btn_xe, text="Sửa", width=12, command=edit_xe).grid(row=0, column=1, padx=5)
+tk.Button(frame_btn_xe, text="Lưu", width=12, command=save_xe).grid(row=0, column=2, padx=5)
+tk.Button(frame_btn_xe, text="Xóa", width=12, command=delete_xe).grid(row=0, column=3, padx=5)
+tk.Button(frame_btn_xe, text="Tải lại", width=12, command=load_xe).grid(row=0, column=4, padx=5)
 
-# ====================== NÚT CHỨC NĂNG ======================
-btn_frame = tk.Frame(root)
-btn_frame.pack(pady=7)
+load_xe()
 
-tk.Button(btn_frame, text="Thêm", width=10, command=them_laixe).grid(row=0, column=0, padx=5)
-tk.Button(btn_frame, text="Sửa", width=10, command=sua_laixe).grid(row=0, column=1, padx=5)
-tk.Button(btn_frame, text="Lưu", width=10, command=luu_laixe).grid(row=0, column=2, padx=5)
-tk.Button(btn_frame, text="Xóa", width=10, command=xoa_laixe).grid(row=0, column=3, padx=5)
-tk.Button(btn_frame, text="Tải lại", width=10, command=load_data).grid(row=0, column=4, padx=5)
+# =====================================================================
+# ======================== TAB QUẢN LÝ LÁI XE ==========================
+# =====================================================================
 
+tab_laixe = tk.Frame(notebook)
+notebook.add(tab_laixe, text="Quản lý Lái Xe")
 
-load_data()
+frame_lx = tk.Frame(tab_laixe)
+frame_lx.pack(pady=10)
+
+tk.Label(frame_lx, text="Mã Lái Xe").grid(row=0, column=0)
+e_ma_lx = tk.Entry(frame_lx, width=20)
+e_ma_lx.grid(row=0, column=1)
+
+tk.Label(frame_lx, text="Họ Tên").grid(row=1, column=0)
+e_ten_lx = tk.Entry(frame_lx, width=20)
+e_ten_lx.grid(row=1, column=1)
+
+tk.Label(frame_lx, text="Ngày Sinh").grid(row=2, column=0)
+date_ns = DateEntry(frame_lx, width=18, date_pattern="yyyy-mm-dd")
+date_ns.grid(row=2, column=1)
+
+tk.Label(frame_lx, text="Bằng Lái").grid(row=0, column=2)
+e_bang = tk.Entry(frame_lx, width=20)
+e_bang.grid(row=0, column=3)
+
+tk.Label(frame_lx, text="SĐT").grid(row=1, column=2)
+e_sdt = tk.Entry(frame_lx, width=20)
+e_sdt.grid(row=1, column=3)
+
+# -------- Bảng -------
+columns_lx = ("MaLX", "HoTen", "NgaySinh", "BangLai", "SDT")
+tree_lx = ttk.Treeview(tab_laixe, columns=columns_lx, show="headings", height=12)
+
+for col in columns_lx:
+    tree_lx.heading(col, text=col)
+    tree_lx.column(col, width=150)
+
+tree_lx.pack(pady=10)
+
+# ===================== HÀM LÁI XE =====================
+def clear_lx():
+    e_ma_lx.delete(0, tk.END)
+    e_ten_lx.delete(0, tk.END)
+    date_ns.set_date("2000-01-01")
+    e_bang.delete(0, tk.END)
+    e_sdt.delete(0, tk.END)
+
+def load_lx():
+    conn = connect_db()
+    cur = conn.cursor()
+    tree_lx.delete(*tree_lx.get_children())
+
+    cur.execute("SELECT * FROM Laixe")
+    for row in cur.fetchall():
+        tree_lx.insert("", tk.END, values=row)
+
+    conn.close()
+
+def add_lx():
+    ma = e_ma_lx.get()
+    ten = e_ten_lx.get()
+    ns = date_ns.get()
+    bang = e_bang.get()
+    sdt = e_sdt.get()
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            "INSERT INTO Laixe VALUES (?, ?, ?, ?, ?)",
+            (ma, ten, ns, bang, sdt)
+        )
+        conn.commit()
+        messagebox.showinfo("OK", "Thêm lái xe thành công!")
+        load_lx()
+        clear_lx()
+    except Exception as e:
+        messagebox.showerror("Lỗi", str(e))
+    conn.close()
+
+def delete_lx():
+    sel = tree_lx.selection()
+    if not sel:
+        messagebox.showwarning("Chọn", "Hãy chọn lái xe để xóa")
+        return
+    ma = tree_lx.item(sel)["values"][0]
+
+    conn = connect_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM Laixe WHERE MaLX=?", (ma,))
+    conn.commit()
+    conn.close()
+    load_lx()
+
+def edit_lx():
+    sel = tree_lx.selection()
+    if not sel:
+        messagebox.showwarning("Chọn", "Hãy chọn lái xe để sửa")
+        return
+    val = tree_lx.item(sel)["values"]
+
+    e_ma_lx.delete(0, tk.END)
+    e_ma_lx.insert(0, val[0])
+
+    e_ten_lx.delete(0, tk.END)
+    e_ten_lx.insert(0, val[1])
+
+    date_ns.set_date(val[2])
+
+    e_bang.delete(0, tk.END)
+    e_bang.insert(0, val[3])
+
+    e_sdt.delete(0, tk.END)
+    e_sdt.insert(0, val[4])
+
+def save_lx():
+    ma = e_ma_lx.get()
+    ten = e_ten_lx.get()
+    ns = date_ns.get()
+    bang = e_bang.get()
+    sdt = e_sdt.get()
+
+    conn = connect_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE Laixe 
+        SET HoTen=?, NgaySinh=?, BangLai=?, SDT=?
+        WHERE MaLX=?
+    """, (ten, ns, bang, sdt, ma))
+
+    conn.commit()
+    conn.close()
+    load_lx()
+    clear_lx()
+
+frame_btn_lx = tk.Frame(tab_laixe)
+frame_btn_lx.pack()
+
+tk.Button(frame_btn_lx, text="Thêm", width=12, command=add_lx).grid(row=0, column=0, padx=5)
+tk.Button(frame_btn_lx, text="Sửa", width=12, command=edit_lx).grid(row=0, column=1, padx=5)
+tk.Button(frame_btn_lx, text="Lưu", width=12, command=save_lx).grid(row=0, column=2, padx=5)
+tk.Button(frame_btn_lx, text="Xóa", width=12, command=delete_lx).grid(row=0, column=3, padx=5)
+tk.Button(frame_btn_lx, text="Tải lại", width=12, command=load_lx).grid(row=0, column=4, padx=5)
+
+load_lx()
+
 root.mainloop()
