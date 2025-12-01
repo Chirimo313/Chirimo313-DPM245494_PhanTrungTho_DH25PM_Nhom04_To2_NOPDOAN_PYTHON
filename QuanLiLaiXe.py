@@ -8,7 +8,7 @@ def connect_db():
     try:
         conn = pyodbc.connect(
             "DRIVER={SQL Server};"
-            "SERVER=localhost;"
+            "SERVER=THOTHAOTC147\MSSQLSERVER2022;"
             "DATABASE=QLXe;"
             "Trusted_Connection=yes;"
         )
